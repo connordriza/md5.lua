@@ -209,8 +209,6 @@ else
   end
 end
 
-
-
 -- convert raw string to big-endian int
 local function str2bei(s)
   local v=0
@@ -240,27 +238,15 @@ else
     end
 end
 
-
 -- cut up a string in little-endian ints of given size
 local function cut_le_str(s)
-  return {
-    str2lei(sub(s, 1, 4)),
-    str2lei(sub(s, 5, 8)),
-    str2lei(sub(s, 9, 12)),
-    str2lei(sub(s, 13, 16)),
-    str2lei(sub(s, 17, 20)),
-    str2lei(sub(s, 21, 24)),
-    str2lei(sub(s, 25, 28)),
-    str2lei(sub(s, 29, 32)),
-    str2lei(sub(s, 33, 36)),
-    str2lei(sub(s, 37, 40)),
-    str2lei(sub(s, 41, 44)),
-    str2lei(sub(s, 45, 48)),
-    str2lei(sub(s, 49, 52)),
-    str2lei(sub(s, 53, 56)),
-    str2lei(sub(s, 57, 60)),
-    str2lei(sub(s, 61, 64)),
-  }
+  local tmp = {};
+  for i = 1, 16 do
+    local arg = i * 4
+    tmp[i] = str2lei(sub(s, arg - 3, arg))
+  end
+
+  return tmp
 end
 
 -- An MD5 mplementation in Lua, requires bitlib (hacked to use LuaBit from above, ugh)
@@ -300,49 +286,49 @@ local z=function (ff,a,b,c,d,x,s,ac)
 end
 
 local md5_sTab = {
-    {7, 12, 17, 22},
-    {5, 9, 14, 20},
-    {4, 11, 16, 23},
-    {6, 10, 15, 21},
+  {7, 12, 17, 22},
+  {5, 9, 14, 20},
+  {4, 11, 16, 23},
+  {6, 10, 15, 21},
 }
 
 local md5_xTab = {
-    {1, 6, 11, 0, 5, 10, 15, 4, 9, 14, 3, 8, 13, 2, 7, 12},
-    {5, 8, 11, 14, 1, 4, 7, 10, 13, 0, 3, 6, 9, 12, 15, 2},
-    {0, 7, 14, 5, 12, 3, 10, 1, 8, 15, 6, 13, 4, 11, 2, 9}
+  {1, 6, 11, 0, 5, 10, 15, 4, 9, 14, 3, 8, 13, 2, 7, 12},
+  {5, 8, 11, 14, 1, 4, 7, 10, 13, 0, 3, 6, 9, 12, 15, 2},
+  {0, 7, 14, 5, 12, 3, 10, 1, 8, 15, 6, 13, 4, 11, 2, 9}
 }
 
 local md5_setOrder = {
-    1,
-    4,
-    3,
-    2
+  1,
+  4,
+  3,
+  2
 }
 
 function transform(A, B, C, D, X)
-    local tab = {A, B, C, D};
-    local argsOrder = {1, 2, 3, 4}
-    local function carousel()
-        local tmp = {}
-        tmp[1] = argsOrder[4]
-        tmp[2] = argsOrder[1]
-        tmp[3] = argsOrder[2]
-        tmp[4] = argsOrder[3]
-        return tmp;
-    end
+  local tab = {A, B, C, D};
+  local argsOrder = {1, 2, 3, 4}
+  local function carousel()
+    local tmp = {}
+    tmp[1] = argsOrder[4]
+    tmp[2] = argsOrder[1]
+    tmp[3] = argsOrder[2]
+    tmp[4] = argsOrder[3]
+    return tmp;
+  end
 
-    for i = 0, 63 do
-        local chunk = math.floor(i / 16) + 1;
-        local xIndex = (i <= 15) and i or md5_xTab[chunk - 1][(i % 16) + 1];
-        local x = X[xIndex];
-        local current = (i % 4) + 1;
-        local s = md5_sTab[chunk][current];
-        tab[md5_setOrder[current]] = z(md5_transform_funcs[chunk], tab[argsOrder[1]], tab[argsOrder[2]], tab[argsOrder[3]], tab[argsOrder[4]], x, s, CONSTS[i + 1])
-        argsOrder = carousel();
-    end
+  for i = 0, 63 do
+    local chunk = math.floor(i / 16) + 1;
+    local xIndex = (i <= 15) and i or md5_xTab[chunk - 1][(i % 16) + 1];
+    local x = X[xIndex];
+    local current = (i % 4) + 1;
+    local s = md5_sTab[chunk][current];
+    tab[md5_setOrder[current]] = z(md5_transform_funcs[chunk], tab[argsOrder[1]], tab[argsOrder[2]], tab[argsOrder[3]], tab[argsOrder[4]], x, s, CONSTS[i + 1])
+    argsOrder = carousel();
+  end
 
-    return bit_and(A+tab[1],0xFFFFFFFF),bit_and(B+tab[2],0xFFFFFFFF),
-         bit_and(C+tab[3],0xFFFFFFFF),bit_and(D+tab[4],0xFFFFFFFF)
+  return bit_and(A+tab[1],0xFFFFFFFF),bit_and(B+tab[2],0xFFFFFFFF),
+    bit_and(C+tab[3],0xFFFFFFFF),bit_and(D+tab[4],0xFFFFFFFF)
 end
 ----------------------------------------------------------------
 
@@ -355,6 +341,7 @@ local function md5_update(self, s)
     X[0] = table.remove(X,1) -- zero based!
     self.a,self.b,self.c,self.d = transform(self.a,self.b,self.c,self.d,X)
   end
+
   self.buf = sub(s, math.floor(#s/64)*64 + 1, #s)
   return self
 end
@@ -362,14 +349,10 @@ end
 local function md5_finish(self)
   local msgLen = self.pos
   local padLen = 56 - msgLen % 64
-
   if msgLen % 64 > 56 then padLen = padLen + 64 end
-
   if padLen == 0 then padLen = 64 end
-
   local s = char(128) .. rep(char(0),padLen-1) .. lei2str(bit_and(8*msgLen, 0xFFFFFFFF)) .. lei2str(math.floor(msgLen/0x20000000))
   md5_update(self, s)
-
   assert(self.pos % 64 == 0)
   return lei2str(self.a) .. lei2str(self.b) .. lei2str(self.c) .. lei2str(self.d)
 end
