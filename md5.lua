@@ -369,10 +369,9 @@ end
 
 function md5.tohex(s)
   local tb = {}
-  for i = 1..8
+  for i = 1..16
   do
-    arg = i * 2
-    tb[i] = format("%04x", str2bei(sub(s, arg - 1, arg)))
+    tb[i] = format("%02x", str2bei(sub(s, arg, arg)))
   end
   return tb:concat()
 end
