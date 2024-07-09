@@ -368,7 +368,12 @@ function md5.new()
 end
 
 function md5.tohex(s)
-  return format("%08x%08x%08x%08x", str2bei(sub(s, 1, 4)), str2bei(sub(s, 5, 8)), str2bei(sub(s, 9, 12)), str2bei(sub(s, 13, 16)))
+  local tb = {}
+  for i = 1..16
+  do
+    tb[i] = format("%02x", byte(s,i))
+  end
+  return table.concat(tb)
 end
 
 function md5.sum(s)
