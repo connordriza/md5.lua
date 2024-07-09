@@ -373,7 +373,7 @@ function md5.tohex(s)
   do
     tb[i] = format("%02x", str2bei(sub(s, arg, arg)))
   end
-  return tb:concat()
+  return table.concat(tb)
 end
 
 function md5.sum(s)
